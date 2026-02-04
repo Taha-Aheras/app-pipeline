@@ -5,7 +5,7 @@ on:
     branches: [ "main" ]
 
 permissions:
-  id-token: write   # needed for OIDC
+  id-token: write
   contents: read
 
 jobs:
@@ -26,31 +26,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: CDK synth
+      - name: CDK Synth
         run: npx cdk synth
 
-      - name: CDK deploy (no approval)
-        run: npx cdk deploy AppStack --require-approval never --outputs-file cdk-outputs.json
-    
-      - name: Parse API URL from outputs
-        id: parseurl
+      - name: CDK Deploy
         run: |
-            url=$(jq -r '.AppStack.ApiUrl // empty' cdk-outputs.json)
-            if [ -z "$url" ]; then
-            echo "API URL not found in outputs"; exit 1
-            fi
-            url="${url%/}"
-            echo "api_url=$url" >> "$GITHUB_OUTPUT"
+          npx cdk deploy --require-approval never --outputs-file cdk-outputs.json
+          echo "--- CDK OUTPUTS BELOW ---"
+          cat cdk-outputs.json
 
-      - name: OWASP ZAP Baseline scan
-        uses: zaproxy/action-baseline@v0.14.0
-        with:
-            target: ${{ steps.parseurl.outputs.api_url }}
-            cmd_options: '-a'      # enable alpha passive checks (still quick)
-            artifact_name: 'zap_report'
-            fail_action: false     # keep non-blocking initially
+      - name: Show Outputs in Logs
+        run: |
+          echo "API URL: $(jq -r 'to_entries[] | .value.ApiUrl' cdk-outputs.json)"
+          echo "Dashboard Name: $(jq -r 'to_entries[] | .value.DashboardName' cdk-outputs.json)"

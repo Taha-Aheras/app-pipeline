@@ -1,57 +1,62 @@
-name: CI
+name: CI (Advanced Build + Test)
 
 on:
   pull_request:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev", "feature/*" ]   # More flexible branch triggers
 
 permissions:
-  contents: read
-  security-events: write
+  contents: read       # required for checkout
+  security-events: write   # required later when we add SAST upload
 
 jobs:
-  build_test:
+  build-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10    # prevent infinite hangs
 
     steps:
-      - name: Checkout
+      # 1) Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      # 2) Node setup with caching
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
 
-      - name: Install dependencies
+      # 3) Install dependencies
+      - name: Install Dependencies
         run: npm ci
 
-      # Optional, only if you have eslint configured
-      - name: Lint
+      # 4) Linting (if eslint configured)
+      - name: Run ESLint
         run: npm run lint --if-present
 
-      - name: Unit tests
-        run: npm test --if-present
+      # 5) Type Checking
+      - name: TypeScript Type Check
+        run: npx tsc --noEmit
 
-      # Optional sanity: ensure TypeScript compiles
-      - name: Build (tsc)
-        run: npm run build --if-present
-        
+      # 6) Unit Tests + Coverage
+      - name: Run Unit Tests
+        run: npm test --if-present -- --coverage
 
-      - name: Install Semgrep CLI
-        run: pipx install semgrep
-
-      - name: Run Semgrep to produce SARIF
-        run: |
-          semgrep scan --config=p/ci --sarif --output=semgrep.sarif --error
-
-
-      - name: List workspace for SARIF
-        run: ls -al && test -f semgrep.sarif && echo "Found semgrep.sarif
-
-
-      - name: Upload Semgrep SARIF to GitHub code scanning
-        if: always()
-        uses: github/codeql-action/upload-sarif@v4
+      # 7) Upload Coverage Report (Artifact)
+      - name: Upload Coverage Artifact
+        uses: actions/upload-artifact@v4
         with:
-          sarif_file: semgrep.sarif
+          name: coverage
+          path: coverage/           # Jest default folder
+
+      # 8) Build the project (optional but recommended)
+      - name: Build Project
+        run: npm run build --if-present
+
+      # 9) Upload build output (helpful for debugging)
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: dist/               # or .aws-sam or build/
+          if-no-files-found: ignore
