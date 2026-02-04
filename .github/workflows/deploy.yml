@@ -57,7 +57,7 @@ jobs:
           target: ${{ steps.parseurl.outputs.api_url }}
           cmd_options: '-a'
           artifact_name: 'zap_report'
-          fail_action: false
+          fail_action: false 
 
       - name: Show target URL
         run: |
