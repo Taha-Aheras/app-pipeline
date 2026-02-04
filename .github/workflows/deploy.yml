@@ -1,11 +1,11 @@
-name: Simple CDK Deploy
+name: CD (Deploy CDK)
 
 on:
   push:
     branches: [ "main" ]
 
 permissions:
-  id-token: write
+  id-token: write   # needed for OIDC
   contents: read
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
@@ -26,12 +26,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: CDK Synth
+      - name: CDK synth
         run: npx cdk synth
 
-      - name: CDK Deploy
+      - name: CDK deploy (no approval)
         run: npx cdk deploy --require-approval never
