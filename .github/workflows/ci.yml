@@ -38,16 +38,20 @@ jobs:
         run: npm run build --if-present
         
 
-      - name: Run Semgrep (SAST)
-        uses: returntocorp/semgrep-action@v1
-        with:
-          generateSarif: true
-          output: semgrep.sarif        # exact filename we will upload
-          config: p/ci                 # quick-start rule pack
+      - name: Install Semgrep CLI
+        run: pipx install semgrep
+
+      - name: Run Semgrep to produce SARIF
+        run: |
+          semgrep scan --config=p/ci --sarif --output=semgrep.sarif --error
+
+
+      - name: List workspace for SARIF
+        run: ls -al && test -f semgrep.sarif && echo "Found semgrep.sarif
 
 
       - name: Upload Semgrep SARIF to GitHub code scanning
         if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: semgrep.sarif 
+          sarif_file: semgrep.sarif
