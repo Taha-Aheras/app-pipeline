@@ -1,0 +1,64 @@
+name: CD (deploy with CDK) + DAST
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  id-token: write     # required for OIDC
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: CDK synth
+        run: npx cdk synth
+
+      - name: CDK deploy AppStack (no approval)
+        run: npx cdk deploy AppStack --require-approval never --outputs-file cdk-outputs.json
+
+      - name: Parse API URL
+        id: parseurl
+        run: |
+          url=$(jq -r '.AppStack.ApiUrl // empty' cdk-outputs.json)
+          if [ -z "$url" ]; then
+            echo "API URL not found in outputs"; exit 1
+          fi
+          url="${url%/}"  # remove trailing slash
+          echo "api_url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: OWASP ZAP Baseline scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ steps.parseurl.outputs.api_url }}
+          cmd_options: '-a'
+          artifact_name: 'zap_report'
+          fail_action: false
+
+      - name: Show target URL
+        run: |
+          echo "Scanned URL: ${{ steps.parseurl.outputs.api_url }}"
