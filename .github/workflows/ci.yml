@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  security-events: write
 
 jobs:
   build_test:
@@ -35,3 +36,18 @@ jobs:
       # Optional sanity: ensure TypeScript compiles
       - name: Build (tsc)
         run: npm run build --if-present
+        
+
+      - name: Run Semgrep (SAST)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          generateSarif: true
+          output: semgrep.sarif        # exact filename we will upload
+          config: p/ci                 # quick-start rule pack
+
+
+      - name: Upload Semgrep SARIF to GitHub code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: semgrep.sarif 

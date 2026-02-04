@@ -35,4 +35,22 @@ jobs:
         run: npx cdk synth
 
       - name: CDK deploy (no approval)
-        run: npx cdk deploy --require-approval never
+        run: npx cdk deploy AppStack --require-approval never --outputs-file cdk-outputs.json
+    
+      - name: Parse API URL from outputs
+        id: parseurl
+        run: |
+            url=$(jq -r '.AppStack.ApiUrl // empty' cdk-outputs.json)
+            if [ -z "$url" ]; then
+            echo "API URL not found in outputs"; exit 1
+            fi
+            url="${url%/}"
+            echo "api_url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: OWASP ZAP Baseline scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+            target: ${{ steps.parseurl.outputs.api_url }}
+            cmd_options: '-a'      # enable alpha passive checks (still quick)
+            artifact_name: 'zap_report'
+            fail_action: false     # keep non-blocking initially
