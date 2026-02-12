@@ -6,11 +6,13 @@ export class AppPipelineStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    // The code that de= ew sqs.Queue(this, 'AppPipelineQueue', {
+    // });fines your stack goes here
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'AppPipelineQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
-  }
-}
+    // example resource   
+    // //   visibilityTimneout: cdk.Duration.seconds(300)
+
+    // const queue 
+  }   
+}          
+          
