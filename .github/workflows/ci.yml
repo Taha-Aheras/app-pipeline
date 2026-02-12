@@ -3,60 +3,53 @@ name: CI (Advanced Build + Test)
 on:
   pull_request:
   push:
-    branches: [ "main", "dev", "feature/*" ]   # More flexible branch triggers
+    branches: [ "main", "dev", "feature/*" ]  
 
 permissions:
-  contents: read       # required for checkout
-  security-events: write   # required later when we add SAST upload
+  contents: read       
+  security-events: write  
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10    # prevent infinite hangs
+    timeout-minutes: 10    
 
     steps:
-      # 1) Checkout code
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2) Node setup with caching
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      # 3) Install dependencies
       - name: Install Dependencies
         run: npm ci
 
-      # 4) Linting (if eslint configured)
       - name: Run ESLint
         run: npm run lint --if-present
 
-      # 5) Type Checking
       - name: TypeScript Type Check
         run: npx tsc --noEmit
 
-      # 6) Unit Tests + Coverage
       - name: Run Unit Tests
         run: npm test --if-present -- --coverage
 
-      # 7) Upload Coverage Report (Artifact)
+ 
       - name: Upload Coverage Artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: coverage/           # Jest default folder
+          path: coverage/         
 
-      # 8) Build the project (optional but recommended)
       - name: Build Project
         run: npm run build --if-present
 
-      # 9) Upload build output (helpful for debugging)
+    
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-output
-          path: dist/               # or .aws-sam or build/
+          path: dist/            
           if-no-files-found: ignore
