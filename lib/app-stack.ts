@@ -10,56 +10,51 @@ export class AppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // ---------------------------------------------------------
-    // 1) DynamoDB Table
-    // ---------------------------------------------------------
-    const table = new dynamodb.Table(this, 'DemoTable', {
+     
+    // Taha DynamoDB Table
+    const table = new dynamodb.Table(this, 'Taha-ka-Table', {
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       tableName: 'DemoPipelineTable'
     });
 
-    // ---------------------------------------------------------
-    // 2) S3 Bucket
-    // ---------------------------------------------------------
-    const bucket = new s3.Bucket(this, 'DemoBucket', {
+    // 
+    // yaha par basic S3 Bucket banaya hu
+    const bucket = new s3.Bucket(this, 'Taha-ki-Bucket', {
       bucketName: `demo-pipeline-bucket-${this.account}-${this.region}`,
       versioned: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true
     });
 
-    // ---------------------------------------------------------
-    // 3) Lambda – Hello World
-    // ---------------------------------------------------------
-    const helloFn = new lambda.Function(this, 'HelloFn', {
+    // 3) Lambda – Hello World by Taha
+    // 
+    const helloFn = new lambda.Function(this, 'Taha-ka-Fn', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
         exports.handler = async () => ({
           statusCode: 200,
-          body: JSON.stringify({ message: "Hello from the CI/CD pipeline!" })
+          body: JSON.stringify({ message: "Hello from the CI/CD pipeline of Tahaa The Noob!" })
         });
       `),
     });
 
-    // ---------------------------------------------------------
+    // 
     // 4) Lambda – Metrics Reporter
-    // ---------------------------------------------------------
     const metricsFn = new lambda.Function(this, 'MetricsFn', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
         exports.handler = async () => ({
           statusCode: 200,
-          body: JSON.stringify({ metrics: "Some runtime metrics here!" })
+          body: JSON.stringify({ metrics: "Some runtime metrics here, like i run from work!" })
         });
       `),
     });
 
-    // ---------------------------------------------------------
+    // 
     // 5) API Gateway with Routes
-    // ---------------------------------------------------------
     const api = new apigw.RestApi(this, 'DemoApi', {
       restApiName: 'Demo Pipeline API',
       deployOptions: {
@@ -73,10 +68,10 @@ export class AppStack extends cdk.Stack {
     const metricsRoute = api.root.addResource('metrics');
     metricsRoute.addMethod('GET', new apigw.LambdaIntegration(metricsFn));
 
-    // 6) CloudWatch Dashboard
+    // 6) CloudWatch Dashboard from me
    
     const dashboard = new cloudwatch.Dashboard(this, 'PipelineDashboard', {
-      dashboardName: 'Enhanced-Pipeline-Dashboard',
+      dashboardName: 'Taha-Pipeline-Dashboard',
     });
 
     dashboard.addWidgets(
@@ -103,9 +98,8 @@ export class AppStack extends cdk.Stack {
       })
     );
 
-    // ---------------------------------------------------------
     // 7) Outputs
-    // ---------------------------------------------------------
+    // 
     new cdk.CfnOutput(this, 'ApiUrl', {
       value: api.url,
       description: 'Invoke URL of the API'

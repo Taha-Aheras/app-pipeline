@@ -1,4 +1,4 @@
-name: CD (Deploy CDK)
+name: CD (Deploy CDK + DAST)
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  security-events: write   # Enables security uploads if needed later (e.g., SARIF)
 
 jobs:
   deploy:
@@ -43,3 +44,32 @@ jobs:
         run: |
           echo "API URL: $(jq -r 'to_entries[] | .value.ApiUrl' cdk-outputs.json)"
           echo "Dashboard Name: $(jq -r 'to_entries[] | .value.DashboardName' cdk-outputs.json)"
+
+      # Extract API URL for use by ZAP
+      - name: Extract API URL
+        id: extract
+        run: |
+          echo "api=$(jq -r 'to_entries[] | .value.ApiUrl' cdk-outputs.json)" >> $GITHUB_OUTPUT
+          echo `Extracted API URL: ${{ steps.extract.outputs.api }}`
+
+      # --- DAST via OWASP ZAP Baseline ---
+      # Baseline scan is a safe passive scan suitable for CI/CD
+      - name: Run DAST Scan (OWASP ZAP Baseline)
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ steps.extract.outputs.api }}
+          rules_file_name: '.zap-rules'  # optional file to suppress specific alerts
+          cmd_options: '-a'              # include alpha passive rules; remove if too noisy
+        continue-on-error: true          # prevent blocking deploy; switch to false to enforce
+
+      # Upload ZAP artifacts so you can download the report from the workflow run
+      - name: Upload ZAP Report Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: |
+            zap/wrk/
+            *.html
+            *.md
+            *.log
+          if-no-files-found: ignore

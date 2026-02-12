@@ -1,18 +1,53 @@
-name: CI (Advanced Build + Test)
+name: CI (Advanced Build + Test + SAST)
 
 on:
   pull_request:
   push:
-    branches: [ "main", "dev", "feature/*" ]  
+    branches: [ "main", "dev", "feature/*" ]
 
 permissions:
-  contents: read       
-  security-events: write  
+  contents: read
+  security-events: write    # REQUIRED for CodeQL results to show in Security tab
+  actions: read
 
 jobs:
+  # --- SAST via CodeQL ---
+  codeql-analysis:
+    name: Perform SAST (CodeQL)
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript' ]   # For JS/TS monorepos, you can add more languages
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node (for build)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      # For JS/TS, CodeQL benefits from a normal project build
+      - name: Build application (required for CodeQL)
+        run: |
+          npm ci
+          npm run build --if-present
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # --- Build + Test job ---
   build-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10    
+    timeout-minutes: 10
 
     steps:
       - name: Checkout Code
@@ -36,20 +71,18 @@ jobs:
       - name: Run Unit Tests
         run: npm test --if-present -- --coverage
 
- 
       - name: Upload Coverage Artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: coverage/         
+          path: coverage/
 
       - name: Build Project
         run: npm run build --if-present
 
-    
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-output
-          path: dist/            
+          path: dist/
           if-no-files-found: ignore
